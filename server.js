@@ -1,13 +1,22 @@
 import Fastify from 'fastify'
 import { Server } from 'socket.io'
 import jwt from '@fastify/jwt'
-import routes from './routes/route.js'
+import { userRoutes } from './routes/user-route.js'
+import mongoose from 'mongoose'
 
 const fastify = Fastify()
-fastify.register(routes)
+fastify.register(userRoutes)
 fastify.register(jwt, {
     secret: "supersecret"
 })
+fastify.decorate("authentication", async(req, reply) => {
+    try {
+        await req.jwtVerify()
+    } catch (error) {
+        reply.send(error)
+    }
+})
+
 const io = new Server(fastify.server)
 
 //middleware example
@@ -60,6 +69,19 @@ io.on('connection', (socket) => {
     })
 })
 
+const connectToMongoDB = async () => {
+    try {
+        await mongoose.connect('mongodb://localhost:27017/SocketIO', {
+            useNewUrlParser: true,
+            useUnifiedTopology: true
+        })
+        console.log('Connected to MongoDB');
+    } catch (error) {
+        console.error(error);
+    }
+}
+connectToMongoDB()
+
 const start = async () => {
     try {
         await fastify.listen({ port: 5000 })
@@ -70,3 +92,5 @@ const start = async () => {
     }
 }
 start()
+
+export default fastify
